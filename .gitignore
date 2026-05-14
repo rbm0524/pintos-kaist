@@ -1,0 +1,11 @@
+*.o
+*.a
+*.d
+*.exe
+*.out
+*.sym
+build/
+*/build/
+*.img
+*.dsk
+*.log

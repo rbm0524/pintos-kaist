@@ -75,6 +75,7 @@ list_begin (struct list *list) {
    undefined if ELEM is itself a list tail. */
 struct list_elem *
 list_next (struct list_elem *elem) {
+	// head거나 내부 요소이면서 다음 것이 NULL이 아니면 다음으로 이동
 	ASSERT (is_head (elem) || is_interior (elem));
 	return elem->next;
 }
@@ -425,7 +426,7 @@ list_insert_ordered (struct list *list, struct list_elem *elem,
 	ASSERT (less != NULL);
 
 	for (e = list_begin (list); e != list_end (list); e = list_next (e))
-		if (less (elem, e, aux))
+		if (less (elem, e, aux)) // e가 elem보다 작으면 break
 			break;
 	return list_insert (e, elem);
 }

@@ -4,6 +4,7 @@
 #include <round.h>
 #include <stdint.h>
 
+// 초당 100번 tick 증가
 /* Number of timer interrupts per second. */
 #define TIMER_FREQ 100
 

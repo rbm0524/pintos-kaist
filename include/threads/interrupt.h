@@ -16,6 +16,7 @@ enum intr_level intr_enable (void);
 enum intr_level intr_disable (void);
 
 /* Interrupt stack frame. */
+// 120바이트
 struct gp_registers {
 	uint64_t r15;
 	uint64_t r14;

@@ -90,10 +90,24 @@ struct thread {
 	tid_t tid;                          /* Thread identifier. */
 	enum thread_status status;          /* Thread state. */
 	char name[16];                      /* Name (for debugging purposes). */
-	int priority;                       /* Priority. */
+	int priority;                       /* Priority. */ // 현재 priority
+	int init_priority;					// 초기 할당받은 priority
 
 	/* Shared between thread.c and synch.c. */
 	struct list_elem elem;              /* List element. */
+	int64_t wakeup_tick; // 일어날 시간 정해놓은 것
+
+	// 어떤 lock을 기다리고 있는지 기록
+	struct lock *wait_on_lock;
+
+	// 나에게 priority를 기부한 스레드의 리스트
+	struct list donations;
+	struct list_elem donations_elem;
+
+	// advanced scheduling
+	int nice;
+	int recent_cpu;
+
 
 #ifdef USERPROG
 	/* Owned by userprog/process.c. */
@@ -105,7 +119,7 @@ struct thread {
 #endif
 
 	/* Owned by thread.c. */
-	struct intr_frame tf;               /* Information for switching */
+	struct intr_frame tf;               /* Information for switching */ // interrupt frame임. 레지스터나 각종 상태값 저장
 	unsigned magic;                     /* Detects stack overflow. */
 };
 
@@ -113,6 +127,9 @@ struct thread {
    If true, use multi-level feedback queue scheduler.
    Controlled by kernel command-line option "-o mlfqs". */
 extern bool thread_mlfqs;
+extern struct list ready_list;
+extern struct list blocked_list; // THREAD_BLOCKED state queue
+
 
 void thread_init (void);
 void thread_start (void);
@@ -141,6 +158,17 @@ void thread_set_nice (int);
 int thread_get_recent_cpu (void);
 int thread_get_load_avg (void);
 
+// needed by mlfqs
+// recent_cpu, load_avg are real number
+void calc_priority(struct thread*);
+void calc_recent_cpu(void);
+void calc_load_avg(void);
+void inc_recent_cpu(void);
+void all_recalc_priority(void);
+
+
 void do_iret (struct intr_frame *tf);
+
+bool less_priority(const struct list_elem *elem, const struct list_elem *e, void *aux UNUSED);
 
 #endif /* threads/thread.h */

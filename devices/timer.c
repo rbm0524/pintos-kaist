@@ -88,13 +88,27 @@ timer_elapsed (int64_t then) {
 }
 
 /* Suspends execution for approximately TICKS timer ticks. */
+// the function must be refactor not to use busy waiting
+// waiting 큐에 넣어놓고 계속 꺼내서 확인하니까 불필요한 연산을 하게 된다.
+// 대기큐에 넣어놓고 시간을 지정, 시스템 상의 시간
 void
 timer_sleep (int64_t ticks) {
 	int64_t start = timer_ticks ();
+	//if the interrput level is INTER_ON(the value is 1), we can yield the CPU to other threads
+	// if the condition is false, PANIC will be invoked and the system will be halted
+	ASSERT (intr_get_level () == INTR_ON); // INTER_ON or INTER_OFF
+	enum intr_level old_level = intr_disable();
+	struct thread* current_thread = thread_current();
+	current_thread -> wakeup_tick = start + ticks;
+	list_push_back(&blocked_list, &(current_thread -> elem)); // blocked_list에 등록
+	thread_block(); // 현재 스레드 재우기
 
-	ASSERT (intr_get_level () == INTR_ON);
-	while (timer_elapsed (start) < ticks)
-		thread_yield ();
+	intr_set_level (old_level); // 인터럽트 레벨 복구
+
+	/*
+	while (timer_elapsed (start) < ticks) // the loop will be excuted until elapsed time is greater than specified ticks
+		thread_yield (); // yield the CPU to other threads
+	*/
 }
 
 /* Suspends execution for approximately MS milliseconds. */
@@ -120,12 +134,43 @@ void
 timer_print_stats (void) {
 	printf ("Timer: %"PRId64" ticks\n", timer_ticks ());
 }
-
+
 /* Timer interrupt handler. */
 static void
 timer_interrupt (struct intr_frame *args UNUSED) {
-	ticks++;
-	thread_tick ();
+	ticks++; // 전체 시스템 시간 1 증가
+	thread_tick (); // 교대 타이밍 확인
+	struct list_elem *cur = list_begin(&blocked_list);
+
+	// if threads are sorted, don't need to iterate all threads
+	// 모든 스레드가 순회되고 있다. 더 효율적으로 바꾸려면 정렬해놓는 것이 좋다.
+	while(cur != list_end(&blocked_list)) {
+		struct thread* t = list_entry(cur, struct thread, elem);
+		if(t -> wakeup_tick <= ticks) {
+			// 큐에서 스레드 삭제
+			cur = list_remove(cur); // 큐에서 없애기
+			thread_unblock(t); // 상태를 READY로
+			
+		} else {
+			cur = list_next(cur);
+		}
+	}
+
+	if(thread_mlfqs) {
+		// 매 tick마다 계산
+		inc_recent_cpu();
+
+		// load_avg를 계산, recent_cpu 계산에 반영한 후 나중에 우선순위 바꿀 때 recent_cpu가 반영되게 한다.
+		if(ticks % TIMER_FREQ == 0) {
+			calc_load_avg();
+			calc_recent_cpu();
+		} 
+		
+		// 4틱마다 우선순위를 바꿔야 한다.
+		if(ticks % 4 == 0) {
+			all_recalc_priority();
+		}
+	}
 }
 
 /* Returns true if LOOPS iterations waits for more than one timer

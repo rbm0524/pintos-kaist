@@ -4,6 +4,7 @@
 #include <list.h>
 #include <stdbool.h>
 
+// semaphore lock을 얻으려고 할 때 가용자원이 없으면 여기서 대기한다.
 /* A counting semaphore. */
 struct semaphore {
 	unsigned value;             /* Current value. */
@@ -15,6 +16,7 @@ void sema_down (struct semaphore *);
 bool sema_try_down (struct semaphore *);
 void sema_up (struct semaphore *);
 void sema_self_test (void);
+
 
 /* Lock. */
 struct lock {
@@ -28,6 +30,7 @@ bool lock_try_acquire (struct lock *);
 void lock_release (struct lock *);
 bool lock_held_by_current_thread (const struct lock *);
 
+// semaphore lock 진입 시 가용자원이 없어서 얻을 수 없으면 여기서 대기한다.
 /* Condition variable. */
 struct condition {
 	struct list waiters;        /* List of waiting threads. */
